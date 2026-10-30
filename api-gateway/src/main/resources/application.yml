@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: account-auth-route
+          uri: lb://ACCOUNT-SERVICE
+          predicates:
+            - Path=/auth/**
+
+        - id: account-service-route
+          uri: lb://ACCOUNT-SERVICE
+          predicates:
+            - Path=/accounts/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        - id: payment-service-route
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/payments/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        - id: payment-gateway-route
+          uri: lb://PAYMENT-GATEWAY
+          predicates:
+            - Path=/gateway/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        - id: notification-service-route
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/notifications/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
