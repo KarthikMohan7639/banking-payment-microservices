@@ -2,6 +2,8 @@ package com.banking.gateway.service;
 
 import com.banking.gateway.dto.ChargeRequest;
 import com.banking.gateway.dto.ChargeResponse;
+import com.banking.gateway.dto.RefundRequest;
+import com.banking.gateway.dto.RefundResponse;
 import com.banking.gateway.entity.GatewayTransaction;
 import com.banking.gateway.entity.TransactionStatus;
 import com.banking.gateway.repository.GatewayTransactionRepository;
@@ -9,10 +11,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Service class simulating external PSP charge and refund execution with idempotency.
+ */
+// WHY: Registers class as a Spring Service component for PSP operations.
 @Service
 @RequiredArgsConstructor
 public class PaymentGatewayService {
@@ -48,9 +55,17 @@ public class PaymentGatewayService {
         return new ChargeResponse(gatewayRef, status);
     }
 
+    public RefundResponse refund(RefundRequest request) {
+        GatewayTransaction tx = repository.findByGatewayRef(request.getGatewayRef())
+                .orElseThrow(() -> new NoSuchElementException("Gateway transaction not found for ref: " + request.getGatewayRef()));
+
+        String refundRef = "REFUND-" + UUID.randomUUID().toString();
+        return new RefundResponse(refundRef, tx.getGatewayRef(), "REFUNDED");
+    }
+
     public ChargeResponse getByGatewayRef(String gatewayRef) {
         GatewayTransaction tx = repository.findByGatewayRef(gatewayRef)
-                .orElseThrow(() -> new RuntimeException("Gateway transaction not found for ref: " + gatewayRef));
+                .orElseThrow(() -> new NoSuchElementException("Gateway transaction not found for ref: " + gatewayRef));
         return new ChargeResponse(tx.getGatewayRef(), tx.getStatus());
     }
 }

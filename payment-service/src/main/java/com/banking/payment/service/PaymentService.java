@@ -7,9 +7,11 @@ import com.banking.payment.dto.ChargeResponse;
 import com.banking.payment.dto.DebitCreditRequest;
 import com.banking.payment.dto.PaymentRequest;
 import com.banking.payment.dto.PaymentResponse;
+import com.banking.payment.dto.RefundRequest;
 import com.banking.payment.entity.Payment;
 import com.banking.payment.entity.PaymentStatus;
 import com.banking.payment.event.PaymentEvent;
+import com.banking.payment.exception.PaymentFailedException;
 import com.banking.payment.repository.PaymentRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,10 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Service orchestrating monetary transfer SAGA pattern across microservices.
+ */
+// WHY: Registers class as a Spring Service component.
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -35,7 +41,9 @@ public class PaymentService {
 
     public static final String TOPIC = "payment-events";
 
+    // WHY: Rolls back database transaction if any exception occurs during processing.
     @Transactional(rollbackFor = Exception.class)
+    // WHY: Applies Resilience4j circuit breaker to prevent cascading failures if external dependencies fail.
     @CircuitBreaker(name = "paymentGatewayCB", fallbackMethod = "processPaymentFallback")
     public PaymentResponse processPayment(PaymentRequest request) {
         // 1. Idempotency Check
@@ -66,7 +74,7 @@ public class PaymentService {
             payment.setFailureReason("Debit failed: " + e.getMessage());
             paymentRepository.save(payment);
             publishEvent(payment);
-            return mapToResponse(payment);
+            throw new PaymentFailedException(payment.getFailureReason());
         }
 
         // 3. Step 2 of SAGA: Charge External Payment Gateway via Feign
@@ -79,24 +87,22 @@ public class PaymentService {
                     .build());
         } catch (Exception e) {
             log.error("Payment Gateway call failed: {}", e.getMessage());
-            // Compensation: Refund source account
             compensateDebit(request.getFromAccountId(), request.getAmount());
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason("Gateway call exception: " + e.getMessage());
             paymentRepository.save(payment);
             publishEvent(payment);
-            return mapToResponse(payment);
+            throw new PaymentFailedException(payment.getFailureReason());
         }
 
         if (!"SUCCESS".equalsIgnoreCase(chargeResponse.getStatus())) {
             log.warn("Payment Gateway declined transaction: {}", chargeResponse.getGatewayRef());
-            // Compensation: Refund source account
             compensateDebit(request.getFromAccountId(), request.getAmount());
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason("Gateway declined payment");
             paymentRepository.save(payment);
             publishEvent(payment);
-            return mapToResponse(payment);
+            throw new PaymentFailedException(payment.getFailureReason());
         }
 
         // 4. Step 3 of SAGA: Credit Target Account via Feign
@@ -104,13 +110,13 @@ public class PaymentService {
             accountClient.credit(request.getToAccountId(), new DebitCreditRequest(request.getAmount()));
         } catch (Exception e) {
             log.error("Failed to credit target account {}: {}", request.getToAccountId(), e.getMessage());
-            // Compensation: Refund source account
             compensateDebit(request.getFromAccountId(), request.getAmount());
+            compensateGateway(chargeResponse.getGatewayRef(), request.getAmount());
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason("Credit failed: " + e.getMessage());
             paymentRepository.save(payment);
             publishEvent(payment);
-            return mapToResponse(payment);
+            throw new PaymentFailedException(payment.getFailureReason());
         }
 
         // 5. Success
@@ -148,14 +154,24 @@ public class PaymentService {
         }
     }
 
+    private void compensateGateway(String gatewayRef, java.math.BigDecimal amount) {
+        try {
+            paymentGatewayClient.refund(new RefundRequest(gatewayRef, amount));
+            log.info("Compensation successful: Gateway refunded ref {}", gatewayRef);
+        } catch (Exception e) {
+            log.error("CRITICAL: Failed to issue gateway refund for ref {}: {}", gatewayRef, e.getMessage());
+        }
+    }
+
     private void publishEvent(Payment payment) {
         PaymentEvent event = PaymentEvent.builder()
                 .paymentId(payment.getPaymentId())
+                .status(payment.getStatus().name())
                 .fromAccountId(payment.getFromAccountId())
                 .toAccountId(payment.getToAccountId())
                 .amount(payment.getAmount())
-                .status(payment.getStatus().name())
-                .timestamp(LocalDateTime.now())
+                .reason(payment.getFailureReason())
+                .eventTime(LocalDateTime.now())
                 .build();
         try {
             kafkaTemplate.send(TOPIC, payment.getPaymentId(), event);

@@ -14,8 +14,9 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * Entity used for demonstrating SQL analytics queries (e.g. 2nd highest salary query).
+ * JPA Entity used for SQL query analytics demonstrations (e.g., 2nd highest salary).
  */
+// WHY: Maps domain class to relational database table 'employees'.
 @Entity
 @Table(name = "employees")
 @Data
@@ -24,7 +25,9 @@ import java.math.BigDecimal;
 @Builder
 public class Employee {
 
+    // WHY: Primary key identifier.
     @Id
+    // WHY: Identity strategy for primary key generation.
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long empId;
 

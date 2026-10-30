@@ -11,6 +11,7 @@ import com.banking.payment.dto.PaymentResponse;
 import com.banking.payment.entity.Payment;
 import com.banking.payment.entity.PaymentStatus;
 import com.banking.payment.event.PaymentEvent;
+import com.banking.payment.exception.PaymentFailedException;
 import com.banking.payment.repository.PaymentRepository;
 import com.banking.payment.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,27 +27,36 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Mockito unit test validating SAGA transfer flow, failure handling, and compensation logic.
+ */
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
+    // WHY: Mockito mock instance for PaymentRepository.
     @Mock
     private PaymentRepository paymentRepository;
 
+    // WHY: Mockito mock instance for AccountClient Feign client.
     @Mock
     private AccountClient accountClient;
 
+    // WHY: Mockito mock instance for PaymentGatewayClient Feign client.
     @Mock
     private PaymentGatewayClient paymentGatewayClient;
 
+    // WHY: Mockito mock instance for KafkaTemplate.
     @Mock
     private KafkaTemplate<String, PaymentEvent> kafkaTemplate;
 
+    // WHY: Injects created mocks into PaymentService target instance under test.
     @InjectMocks
     private PaymentService paymentService;
 
@@ -90,9 +100,8 @@ class PaymentServiceTest {
                 .thenThrow(new RuntimeException("Insufficient Balance"));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
 
-        PaymentResponse response = paymentService.processPayment(paymentRequest);
+        assertThrows(PaymentFailedException.class, () -> paymentService.processPayment(paymentRequest));
 
-        assertEquals(PaymentStatus.FAILED, response.getStatus());
         verify(paymentGatewayClient, never()).charge(any());
         verify(accountClient, never()).credit(eq(2L), any());
     }
@@ -106,10 +115,8 @@ class PaymentServiceTest {
                 .thenReturn(new ChargeResponse("GW-ERR", "FAILED"));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(i -> i.getArgument(0));
 
-        PaymentResponse response = paymentService.processPayment(paymentRequest);
+        assertThrows(PaymentFailedException.class, () -> paymentService.processPayment(paymentRequest));
 
-        assertEquals(PaymentStatus.FAILED, response.getStatus());
-        // Verify compensation refund back to source account 1L
         verify(accountClient).credit(eq(1L), any(DebitCreditRequest.class));
     }
 }

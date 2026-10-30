@@ -28,6 +28,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Web MVC slice test class validating AccountController endpoints and HTTP mapping.
+ */
+// WHY: Boots only the Spring Web MVC layer for testing AccountController without starting a full server.
 @WebMvcTest(AccountController.class)
 @ContextConfiguration(classes = {AccountController.class, GlobalExceptionHandler.class})
 @AutoConfigureMockMvc(addFilters = false)
@@ -36,6 +40,7 @@ class AccountControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    // WHY: Mocks the AccountService dependency in the Spring WebMvc test application context.
     @MockBean
     private AccountService accountService;
 

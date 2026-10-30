@@ -21,6 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * REST Controller exposing account endpoints, balance adjustments, and analytics queries.
+ */
+// WHY: Combines @Controller and @ResponseBody to return RESTful JSON responses.
 @RestController
 @RequestMapping("/accounts")
 @RequiredArgsConstructor
@@ -29,6 +33,7 @@ public class AccountController {
     private final AccountService accountService;
 
     @PostMapping
+    // WHY: Enables Spring validation on the AccountRequest object before controller method invocation.
     public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody AccountRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(request));
     }
@@ -39,16 +44,19 @@ public class AccountController {
     }
 
     @PutMapping("/{id}/debit")
+    // WHY: Triggers DTO annotation validation on DebitCreditRequest.
     public ResponseEntity<AccountResponse> debit(@PathVariable Long id, @Valid @RequestBody DebitCreditRequest request) {
         return ResponseEntity.ok(accountService.debit(id, request));
     }
 
     @PutMapping("/{id}/credit")
+    // WHY: Validates input amount before executing credit logic.
     public ResponseEntity<AccountResponse> credit(@PathVariable Long id, @Valid @RequestBody DebitCreditRequest request) {
         return ResponseEntity.ok(accountService.credit(id, request));
     }
 
     @DeleteMapping("/{id}")
+    // WHY: Restricts access to account deletion endpoint exclusively to users with ROLE_ADMIN.
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
         accountService.deleteAccount(id);

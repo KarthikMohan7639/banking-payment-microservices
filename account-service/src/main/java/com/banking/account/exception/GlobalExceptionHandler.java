@@ -12,6 +12,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * Global exception handler providing structured JSON error responses across all controllers.
+ */
+// WHY: Declares global advice bean intercepting exceptions thrown by @RestController classes.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

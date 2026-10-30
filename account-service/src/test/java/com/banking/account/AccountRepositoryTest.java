@@ -12,6 +12,10 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Data JPA test class validating native SQL queries against H2 database.
+ */
+// WHY: Configures an in-memory database and Spring Data JPA components for repository testing.
 @DataJpaTest
 class AccountRepositoryTest {
 
@@ -31,9 +35,6 @@ class AccountRepositoryTest {
     @Test
     void testTop3CustomersNativeQueryWithSeedData() {
         List<Object[]> top3 = paymentLogRepository.findTop3CustomersByPaymentAmountNative();
-        for (Object[] row : top3) {
-            System.out.println("Customer: " + row[0] + ", Total: " + row[1] + ", Rank: " + row[2]);
-        }
         assertEquals(3, top3.size());
         assertEquals("Alice Smith", top3.get(0)[0]);
     }

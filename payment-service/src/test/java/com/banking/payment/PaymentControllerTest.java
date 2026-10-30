@@ -4,6 +4,7 @@ import com.banking.payment.controller.PaymentController;
 import com.banking.payment.dto.PaymentRequest;
 import com.banking.payment.dto.PaymentResponse;
 import com.banking.payment.entity.PaymentStatus;
+import com.banking.payment.exception.GlobalExceptionHandler;
 import com.banking.payment.service.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -22,12 +24,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Web MVC test for PaymentController REST endpoint mapping.
+ */
+// WHY: Tests PaymentController isolated from full server context.
 @WebMvcTest(PaymentController.class)
+@ContextConfiguration(classes = {PaymentController.class, GlobalExceptionHandler.class})
 class PaymentControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    // WHY: Mocks PaymentService bean in WebMvc context.
     @MockBean
     private PaymentService paymentService;
 

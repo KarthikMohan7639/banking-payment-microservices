@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+/**
+ * Data Transfer Object for debit and credit requests.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,6 +19,7 @@ import java.math.BigDecimal;
 public class DebitCreditRequest {
 
     @NotNull(message = "Amount is required")
+    // WHY: Ensures debit or credit transaction amount is strictly greater than zero.
     @Positive(message = "Amount must be strictly positive")
     private BigDecimal amount;
 }

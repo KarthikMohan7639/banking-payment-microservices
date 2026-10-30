@@ -16,8 +16,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * JPA Entity representing a Bank Account.
+ * JPA Entity representing a bank account with monetary balance.
  */
+// WHY: Marks class as a JPA entity mapped to relational database table 'accounts'.
 @Entity
 @Table(name = "accounts")
 @Data
@@ -26,7 +27,9 @@ import java.time.LocalDateTime;
 @Builder
 public class Account {
 
+    // WHY: Marks field as primary key identifier for the account entity.
     @Id
+    // WHY: Delegates primary key generation to H2 database autoincrement sequence.
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long accountId;
 

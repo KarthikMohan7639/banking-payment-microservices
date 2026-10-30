@@ -26,18 +26,25 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Pure Mockito unit test class for AccountService business logic.
+ */
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
+    // WHY: Creates a Mockito mock instance of AccountRepository to isolate service tests.
     @Mock
     private AccountRepository accountRepository;
 
+    // WHY: Creates a Mockito mock instance for EmployeeRepository.
     @Mock
     private EmployeeRepository employeeRepository;
 
+    // WHY: Creates a Mockito mock instance for PaymentLogRepository.
     @Mock
     private PaymentLogRepository paymentLogRepository;
 
+    // WHY: Injects created mocks directly into the AccountService target instance.
     @InjectMocks
     private AccountService accountService;
 

@@ -15,8 +15,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * PaymentLog entity used for demonstrating window function queries (Top-3 customers by payment sum).
+ * JPA Entity representing payment transaction history for native SQL window function analytics.
  */
+// WHY: Maps domain class to 'payment_log' table.
 @Entity
 @Table(name = "payment_log")
 @Data
@@ -25,7 +26,9 @@ import java.time.LocalDateTime;
 @Builder
 public class PaymentLog {
 
+    // WHY: Primary key identifier.
     @Id
+    // WHY: Identity sequence primary key generation.
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

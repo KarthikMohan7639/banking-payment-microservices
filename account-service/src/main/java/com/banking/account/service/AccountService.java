@@ -18,6 +18,10 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+/**
+ * Service class implementing business logic for account management and SQL analytics.
+ */
+// WHY: Registers class as a Spring business service bean in application context.
 @Service
 @RequiredArgsConstructor
 public class AccountService {
@@ -42,6 +46,7 @@ public class AccountService {
         return mapToResponse(account);
     }
 
+    // WHY: Wraps debit operation in a database transaction; rolls back if InsufficientBalanceException is thrown.
     @Transactional
     public AccountResponse debit(Long id, DebitCreditRequest request) {
         Account account = accountRepository.findById(id)
@@ -58,6 +63,7 @@ public class AccountService {
         return mapToResponse(updated);
     }
 
+    // WHY: Wraps credit operation in a database transaction to preserve consistency.
     @Transactional
     public AccountResponse credit(Long id, DebitCreditRequest request) {
         Account account = accountRepository.findById(id)

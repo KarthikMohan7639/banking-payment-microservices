@@ -20,6 +20,10 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+/**
+ * Embedded Kafka integration test verifying event consumption in notification-service.
+ */
+// WHY: Boots full Spring context alongside an in-memory Kafka broker for embedded integration testing.
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, topics = {"payment-events"})
 @DirtiesContext
@@ -42,7 +46,8 @@ class NotificationConsumerTest {
                 .toAccountId(2L)
                 .amount(new BigDecimal("250.00"))
                 .status("SUCCESS")
-                .timestamp(LocalDateTime.now())
+                .reason(null)
+                .eventTime(LocalDateTime.now())
                 .build();
 
         kafkaTemplate.send("payment-events", event.getPaymentId(), event);

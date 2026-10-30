@@ -8,7 +8,7 @@ A production-ready, multi-module Spring Boot 3.3.4 microservices architecture bu
 
 ```
                               ┌────────────────────────┐
-                              │      Client / UI       │
+                              │     Client / Postman   │
                               └───────────┬────────────┘
                                           │
                                           ▼
@@ -64,32 +64,85 @@ A production-ready, multi-module Spring Boot 3.3.4 microservices architecture bu
 
 ---
 
-## 🚀 How to Run Locally
+## 🚀 Startup Order
 
-### Prerequisites
-- JDK 17
-- Maven 3.8+
-
-### Step 1: Build the Entire Project
-```bash
-mvn clean package
-```
-
-### Step 2: Start Services in Order
-1. **Eureka Server:** `java -jar eureka-server/target/eureka-server-1.0.0-SNAPSHOT.jar`
-2. **Account Service:** `java -jar account-service/target/account-service-1.0.0-SNAPSHOT.jar`
-3. **Payment Gateway:** `java -jar payment-gateway/target/payment-gateway-1.0.0-SNAPSHOT.jar`
-4. **Payment Service:** `java -jar payment-service/target/payment-service-1.0.0-SNAPSHOT.jar`
-5. **Notification Service:** `java -jar notification-service/target/notification-service-1.0.0-SNAPSHOT.jar`
-6. **API Gateway:** `java -jar api-gateway/target/api-gateway-1.0.0-SNAPSHOT.jar`
+Services should be started sequentially in the following order:
+1. **`eureka-server`** (Port 8761)
+2. **`account-service`** (Port 8081)
+3. **`payment-gateway`** (Port 8084)
+4. **`payment-service`** (Port 8082)
+5. **`notification-service`** (Port 8083)
+6. **`api-gateway`** (Port 8080)
 
 ---
 
-## 🔑 Endpoints Overview
+## 🧪 End-to-End Postman / Curl Walkthrough
 
-- **Eureka Dashboard:** `http://localhost:8761`
-- **Login / Authentication:** `POST http://localhost:8080/auth/login`
-- **Account Operations:** `http://localhost:8080/accounts`
-- **Execute Payment:** `POST http://localhost:8080/payments`
-- **Gateway Charge:** `POST http://localhost:8080/gateway/charge`
-- **Notifications:** `GET http://localhost:8080/notifications`
+### Step 1: Login & Obtain JWT Token
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"john_doe","password":"password123"}'
+```
+*Response:* Copy the returned JWT token.
+
+### Step 2: Create Two Accounts
+```bash
+# Create Account 1
+curl -X POST http://localhost:8080/accounts \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"customerName":"Sender User","balance":1000.00,"ownerUsername":"john_doe"}'
+
+# Create Account 2
+curl -X POST http://localhost:8080/accounts \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"customerName":"Receiver User","balance":500.00,"ownerUsername":"receiver_user"}'
+```
+
+### Step 3: Initiate Payment with Idempotency Key
+```bash
+curl -X POST http://localhost:8080/payments \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"fromAccountId":1,"toAccountId":2,"amount":200.00,"currency":"USD","idempotencyKey":"IDEM-KEY-001"}'
+```
+
+### Step 4: Retry Payment with SAME Idempotency Key
+```bash
+curl -X POST http://localhost:8080/payments \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"fromAccountId":1,"toAccountId":2,"amount":200.00,"currency":"USD","idempotencyKey":"IDEM-KEY-001"}'
+```
+*Note:* Observe that the exact same payment object is returned without double debiting Account 1.
+
+---
+
+## 📊 SQL Analytics & Optimization Section
+
+### 1. Second Highest Salary Query
+```sql
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 1;
+```
+
+### 2. Top 3 Customers by Payment Volume (Window Function)
+```sql
+SELECT customer_name, total_amount, rnk FROM (
+    SELECT customer_name, SUM(amount) AS total_amount,
+           ROW_NUMBER() OVER (ORDER BY SUM(amount) DESC) AS rnk
+    FROM payment_log
+    GROUP BY customer_name
+) ranked
+WHERE rnk <= 3;
+```
+
+### 3. Recommended Database Indexes
+- **`CREATE INDEX idx_paymentlog_customer_amount ON payment_log(customer_name, amount);`**
+  - *Why:* Optimizes GROUP BY aggregation and SUM() computation over large payment log tables.
+- **`CREATE INDEX idx_paymentlog_created_at ON payment_log(created_at);`**
+  - *Why:* Speeds up time-series range filtering and analytics aggregations across date intervals.
